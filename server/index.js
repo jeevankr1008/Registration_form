@@ -36,6 +36,16 @@ app.get("/", (req, res) => {
   res.json({ message: "Server is running" });
 });
 
+app.get("/api/registrations", async (req, res) => {
+  try {
+    const registrations = await User.find().sort({ createdAt: -1 }).lean();
+    res.json(registrations);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Unable to load registrations" });
+  }
+});
+
 app.post("/api/register", async (req, res) => {
   try {
     const registration = req.body;
@@ -52,9 +62,9 @@ app.post("/api/register", async (req, res) => {
       return res.status(409).json({ message: "Email or roll number already registered" });
     }
 
-    await User.create(registration);
+    const createdRegistration = await User.create(registration);
 
-    res.status(201).json({ message: "Registration successful" });
+    res.status(201).json({ message: "Registration successful", registration: createdRegistration });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Registration failed" });

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 const companies = ['HCLTech', 'TCS', 'Wipro', 'Infosys', 'Accenture', 'Cognizant', 'Capgemini', 'Tech Mahindra', 'IBM', 'Deloitte']
@@ -11,16 +11,31 @@ const courses = {
   Civil: ['B.E. Civil Engineering'],
 }
 const blankForm = { studentName: '', gender: '', rollNo: '', dob: '', bloodGroup: '', phone: '', email: '', address: '', department: '', course: '', year: '', section: '', backlogs: '' }
-const starterRegistration = { ...blankForm, studentName: 'Aarav Menon', rollNo: 'CSE2024018', department: 'Computer Science', backlogs: '0', companies: ['TCS', 'Accenture', 'Infosys', 'Deloitte'] }
+const apiBase = import.meta.env.VITE_API_URL || 'https://registration-form-backend-e90a.onrender.com/api'
 
 function App() {
   const [view, setView] = useState('register')
   const [step, setStep] = useState(1)
   const [form, setForm] = useState(blankForm)
   const [selected, setSelected] = useState([])
-  const [registrations, setRegistrations] = useState([starterRegistration])
+  const [registrations, setRegistrations] = useState([])
   const [submitted, setSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState('')
+
+  useEffect(() => {
+    const loadRegistrations = async () => {
+      try {
+        const response = await fetch(`${apiBase}/registrations`)
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.message || 'Unable to load registrations')
+        setRegistrations(data)
+      } catch (error) {
+        console.error(error)
+      }
+    }
+
+    loadRegistrations()
+  }, [])
 
   const updateField = ({ target: { name, value } }) => setForm((current) => ({ ...current, [name]: value }))
   const nextStep = (event) => { event.preventDefault(); if (form.backlogs === '0') setStep(2) }
@@ -33,7 +48,7 @@ function App() {
     const registration = { ...form, companies: selected }
 
     try {
-      const response = await fetch('http://localhost:5000/api/register', {
+      const response = await fetch(`${apiBase}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(registration),
@@ -42,7 +57,7 @@ function App() {
 
       if (!response.ok) throw new Error(data.message || 'Registration failed')
 
-      setRegistrations((current) => [...current, registration])
+      setRegistrations((current) => [data.registration, ...current])
       setSubmitted(true)
     } catch (error) {
       setSubmitError(error.message)
@@ -53,12 +68,12 @@ function App() {
 
   return <main className="app-shell">
     <header className="topbar"><button className="brand" type="button" onClick={() => setView('register')}><span className="brand-mark">N</span><span><strong>NEXUS</strong><small>CAREER CELL</small></span></button><nav className="top-nav"><button className={view === 'register' ? 'nav-link active' : 'nav-link'} type="button" onClick={() => setView('register')}>Student registration</button><button className={view === 'admin' ? 'nav-link active' : 'nav-link'} type="button" onClick={() => setView('admin')}>Admin dashboard</button></nav><span className="academic-year">2024 / 25</span></header>
-    {view === 'admin' ? <Admin registrations={registrations} count={count} setView={setView} /> : <Registration form={form} updateField={updateField} step={step} setStep={setStep} selected={selected} toggleCompany={toggleCompany} nextStep={nextStep} submit={submit} submitted={submitted} reset={reset} />}
+    {view === 'admin' ? <Admin registrations={registrations} count={count} setView={setView} /> : <Registration form={form} updateField={updateField} step={step} setStep={setStep} selected={selected} toggleCompany={toggleCompany} nextStep={nextStep} submit={submit} submitted={submitted} reset={reset} submitError={submitError} />}
     <footer><span>© 2024 Nexus Career Cell</span><span>Student placement registration portal</span></footer>
   </main>
 }
 
-function Registration({ form, updateField, step, setStep, selected, toggleCompany, nextStep, submit, submitted, reset }) {
+function Registration({ form, updateField, step, setStep, selected, toggleCompany, nextStep, submit, submitted, reset, submitError }) {
   return <section className="page registration-page"><div className="page-heading"><div><p className="eyebrow">NEXUS CAREER CELL / STUDENT INTAKE</p><h1>Build your next chapter.</h1><p className="intro">Register your academic profile and choose the companies you want to grow with.</p></div><div className="stepper"><span className={step === 1 ? 'step active' : 'step'}>01 <small>Profile</small></span><i /><span className={step === 2 ? 'step active' : 'step'}>02 <small>Preferences</small></span></div></div>
     {submitted ? <div className="success-state"><div className="success-icon">✓</div><p className="eyebrow">REGISTRATION COMPLETE</p><h2>You are on the list, {form.studentName.split(' ')[0]}.</h2><p>Your profile and four company preferences have been submitted to the placement office.</p><button className="primary-button" type="button" onClick={reset}>Register another student</button></div> : step === 1 ? <Profile form={form} updateField={updateField} nextStep={nextStep} /> : <Preferences selected={selected} toggleCompany={toggleCompany} setStep={setStep} submit={submit} submitError={submitError} />}
   </section>
